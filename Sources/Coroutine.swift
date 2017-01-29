@@ -13,19 +13,35 @@ protocol Startable : AnyObject {
 }
 
 /**
+ * Coroutine iterator, support for loop
+ */
+public struct CoroutineIterator<Element> : IteratorProtocol {
+    var owner: Coroutine<Element>
+    init(owner: Coroutine<Element>) {
+        self.owner=owner
+    }
+    public func next()->Element? {
+        return owner.next()
+    }
+}
+
+/**
  * Coroutine
  */
-public class Coroutine<Up>: Startable, IteratorProtocol {
+public class Coroutine<UpType>: Startable, Sequence {
+    public typealias Element = UpType
+    public typealias Iterator = CoroutineIterator<Element>
+    
     var stack: coro_stack
     var caller_ctx: coro_context
     var coro_ctx: coro_context
-    var entry: (_:(Up)->()) -> ()
+    var entry: (_:(UpType)->()) -> ()
     var completed:Bool
-    var upValue: Up?
+    var upValue: UpType?
     
     func start() {
         // Now we're in callee context
-        self.entry({ (up:Up)->() in
+        self.entry({ (up:UpType)->() in
             self.upValue=up
             coro_transfer(&self.coro_ctx, &self.caller_ctx)
         })
@@ -38,19 +54,26 @@ public class Coroutine<Up>: Startable, IteratorProtocol {
      * Called from caller context, continues the coroutine
      * Returns an upValue set by yield called by coroutine
      */
-    public func next()->Up? {
+    public func next()->UpType? {
         if(!completed) {
             self.upValue = Optional.none
             coro_transfer(&self.caller_ctx, &self.coro_ctx)
         }
         return self.upValue
     }
+    
+    /**
+     * Conform to Sequence protocol 
+     */
+    public func makeIterator() -> Iterator {
+        return CoroutineIterator(owner: self)
+    }
 
     /**
      * Create a coroutine, supply a callback function acts as "yield"
      * Coroutine calls the callback to yield an upValue
      */
-    public init(entry:@escaping (_:(Up)->())->Void, withSuggestedStackSize:UInt32 = 0) {
+    public init(entry:@escaping (_:(UpType)->())->Void, withSuggestedStackSize:UInt32 = 0) {
         stack=coro_stack()
         coro_stack_alloc(&stack, withSuggestedStackSize)
         caller_ctx=coro_context()
