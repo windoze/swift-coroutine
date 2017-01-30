@@ -30,6 +30,7 @@ public struct CoroutineIterator<Element>: IteratorProtocol {
 
 /**
  * CoroutineSequence
+ * Every time a new value is yielded from coroutine when calling next()
  */
 
 public class CoroutineSequence<Element>: Startable, Sequence {
@@ -73,8 +74,8 @@ public class CoroutineSequence<Element>: Startable, Sequence {
     }
 
     /**
-     * Create a coroutine, supply a callback function acts as "yield"
-     * Coroutine calls the callback to yield an upValue
+     * Create a coroutine sequence, supply a callback function acts as "yield"
+     * Coroutine calls the callback to yield an upValue to feed the sequence
      */
     public init(entry: @escaping (_: (Element) -> Void) -> Void, withSuggestedStackSize: UInt32 = 0) {
         stack = coro_stack()
@@ -87,7 +88,7 @@ public class CoroutineSequence<Element>: Startable, Sequence {
                 { (ptr: UnsafeMutableRawPointer?) -> Void in
                     // HACK: Swift doesn't allow C routine calls back to a generic closure
                     // Use protocol Startable as a type eraser
-                    (Unmanaged<AnyObject>.fromOpaque(ptr!).takeRetainedValue() as! Startable).start()
+                    (Unmanaged<AnyObject>.fromOpaque(ptr!).autorelease().takeRetainedValue() as! Startable).start()
                 },
                 Unmanaged.passUnretained(self).toOpaque(), stack.sptr, stack.ssze)
     }
@@ -96,6 +97,10 @@ public class CoroutineSequence<Element>: Startable, Sequence {
         coro_stack_free(&stack)
     }
 }
+
+/**
+ * Asymmetric coroutine with separated Up and Down types
+ */
 
 public class Coroutine<UpType, DownType>: Startable {
     var stack: coro_stack
@@ -121,7 +126,9 @@ public class Coroutine<UpType, DownType>: Startable {
     }
 
     /**
-     * Called from caller context, continues the coroutine
+     * Called from caller context, continues the coroutine, pass down value to corotine
+     * This passed down value will be the argument of entry function in first time that 
+     * this method is called, or be the return value of yield called within coroutine
      * Returns an upValue set by yield called by coroutine
      */
     public func next(withValue: DownType) -> UpType? {
@@ -148,7 +155,7 @@ public class Coroutine<UpType, DownType>: Startable {
                 { (ptr: UnsafeMutableRawPointer?) -> Void in
                     // HACK: Swift doesn't allow C routine calls back to a generic closure
                     // Use protocol Startable as a type eraser
-                    (Unmanaged<AnyObject>.fromOpaque(ptr!).takeRetainedValue() as! Startable).start()
+                    (Unmanaged<AnyObject>.fromOpaque(ptr!).autorelease().takeRetainedValue() as! Startable).start()
                 },
                 Unmanaged.passUnretained(self).toOpaque(), stack.sptr, stack.ssze)
     }
