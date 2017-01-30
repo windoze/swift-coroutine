@@ -13,7 +13,7 @@ protocol Startable: AnyObject {
     func start()
 }
 
-xzswazZZ/**
+/**
  * Coroutine iterator, support for loop
  */
 
