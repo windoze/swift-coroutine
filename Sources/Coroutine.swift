@@ -77,9 +77,9 @@ public class CoroutineSequence<Element>: Startable, Sequence {
      * Create a coroutine sequence, supply a callback function acts as "yield"
      * Coroutine calls the callback to yield an upValue to feed the sequence
      */
-    public init(entry: @escaping (_: (Element) -> Void) -> Void, withSuggestedStackSize: Int = 0) {
+    public init(withSuggestedStackSize size: Int = 0, _ entry: @escaping (_: (Element) -> Void) -> Void) {
         stack = coro_stack()
-        coro_stack_alloc(&stack, withSuggestedStackSize)
+        coro_stack_alloc(&stack, size)
         caller_ctx = coro_context()
         coro_ctx = coro_context()
         self.entry = entry
@@ -144,9 +144,9 @@ public class Coroutine<UpType, DownType>: Startable {
      * Create a coroutine, supply a callback function acts as "yield"
      * Coroutine calls the callback to yield an upValue
      */
-    public init(entry: @escaping (DownType, _: (UpType) -> DownType) -> Void, withSuggestedStackSize: Int = 0) {
+    public init(withSuggestedStackSize size: Int = 0, _ entry: @escaping (DownType, _: (UpType) -> DownType) -> Void) {
         stack = coro_stack()
-        coro_stack_alloc(&stack, withSuggestedStackSize)
+        coro_stack_alloc(&stack, size)
         caller_ctx = coro_context()
         coro_ctx = coro_context()
         self.entry = entry

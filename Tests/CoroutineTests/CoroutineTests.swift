@@ -1,22 +1,14 @@
 import XCTest
 @testable import Coroutine
 
-func c(yield: (Int) -> ()) {
-    yield(1)
-    yield(2)
-    yield(3)
-}
-
-func c1(initValue: String, yield: (Int) -> String) {
-    XCTAssertEqual(initValue, "1")
-    XCTAssertEqual(yield(1), "2")
-    XCTAssertEqual(yield(2), "3")
-    XCTAssertEqual(yield(3), "")
-}
-
 class CoroutineTests: XCTestCase {
     func testCoroutineSequence() {
-        let cr = CoroutineSequence(entry: c)
+        let cr = CoroutineSequence<Int> {
+            (yield) in
+            yield(1)
+            yield(2)
+            yield(3)
+        }
         XCTAssertEqual(cr.next(), 1)
         XCTAssertEqual(cr.next(), 2)
         XCTAssertEqual(cr.next(), 3)
@@ -24,16 +16,22 @@ class CoroutineTests: XCTestCase {
     }
 
     func testCoroutineIterator() {
-        var n = 0;
-        let cr = CoroutineSequence(entry: c)
-        for i in cr {
-            n = n + 1
-            XCTAssertEqual(n, i)
-        }
+        XCTAssert(CoroutineSequence<Int> {
+            (yield) in
+            yield(1)
+            yield(2)
+            yield(3)
+        }.lazy.elementsEqual(1...3))
     }
 
     func testCoroutine() {
-        let cr = Coroutine(entry: c1)
+        let cr = Coroutine<Int, String> {
+            (initValue, yield) in
+            XCTAssertEqual(initValue, "1")
+            XCTAssertEqual(yield(1), "2")
+            XCTAssertEqual(yield(2), "3")
+            XCTAssertEqual(yield(3), "")
+        }
         XCTAssertEqual(cr.next(withValue: "1"), 1)
         XCTAssertEqual(cr.next(withValue: "2"), 2)
         XCTAssertEqual(cr.next(withValue: "3"), 3)
